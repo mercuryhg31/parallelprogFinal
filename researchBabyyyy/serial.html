@@ -1,5 +1,5 @@
 <html>
-<!-- 
+<!--
 
 	Simple HTML & JS based Mandelbrot generator shown in my blog post on everythingdev.com
 	https://gist.github.com/edev90/e98325426b7e1cc974c9c0a303011904#file-mandelbrot-html
@@ -10,18 +10,18 @@
 
 	var plotWidth = 0;
 	var plotHeight = 0;
-	
+
 	var ctx = null; // canvas context
 
 	// Defining the bounds of the complex plane we're viewing:
-	var iLower = -1.0; 
-	var iUpper = 1.0;	  
+	var iLower = -1.0;
+	var iUpper = 1.0;
 	var realLower = -1.5;
 	var realUpper = 0.5;
 
 	var iScale;
 	var realScale;
-	
+
 	// init canvas
 	function init() {
 		c = document.getElementById("plot");
@@ -31,14 +31,14 @@
 
 		iScale = Math.abs(iLower - iUpper) / plotHeight;
 		realScale = Math.abs(realLower - realUpper) / plotWidth;
-		
-		ctx = document.getElementById("plot").getContext("2d");		
+
+		ctx = document.getElementById("plot").getContext("2d");
 		ctx.fillStyle = "black";
 		ctx.fillRect(0, 0, plotWidth, plotHeight);
-		
+
 		plotMandelbrot();
 	}
-	
+
 	function plotPoint(x, y, clr) {
 		ctx.fillStyle = clr;
 		ctx.fillRect(x,y,1,1);
@@ -47,15 +47,15 @@
 	function solve(real0, i0,	real1, i1) {
 		realpart = (real0*real0) + (-1 * i0 * i0);
 		imagpart = (real0 * i0)*2;
-		
-		realpart += real1;  
+
+		realpart += real1;
 		imagpart += i1;
-		
+
 		return [realpart, imagpart];
 	}
-	
+
 	function plotMandelbrot() {
-		for(let x = 0; x < plotWidth; x++) {		
+		for(let x = 0; x < plotWidth; x++) {
 			for(let y = 0; y < plotHeight; y++) {
 				// convert the real coordinates with origin at (0,0) to coordinates on the complex plane
 				iCoord = iUpper - y*iScale;
@@ -64,18 +64,18 @@
 				pointOutside = false;
 				cNumber = [0,0];
 				its = 0;
-	
+
 				do {
 					cNumber = solve(cNumber[0], cNumber[1], realCoord, iCoord); // the complex number we get back
 					pointOutside = Math.sqrt(cNumber[0]*cNumber[0]+cNumber[1]*cNumber[1]) > 2.0; // calculate magnitude, is it outside the set (> 2.0)?
 					its++;
 				} while(its < 25 && !pointOutside);
-				
+
 				plotPoint(x, y, pointOutside ? "white" : "black");
 			}
 		}
 	}
-	
+
 </script>
 </head>
 <body onload="init()">
