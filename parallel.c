@@ -31,7 +31,7 @@ int mandelbrot(Complex c) {
 }
 
 int main() {
-    FILE* file = fopen("mandelbrot_serial.ppm", "wb");
+    FILE* file = fopen("mandelbrot.ppm", "wb");
     fprintf(file, "P6\n%d %d\n255\n", WIDTH, HEIGHT);
 
     for (int y = 0; y < HEIGHT; y++) {
@@ -44,10 +44,10 @@ int main() {
             int iterations = mandelbrot(c);
             int color = (int)(255 * (1.0 - (double)iterations / MAX_ITERATIONS));
 
-            // Write pixel color to file
-            fputc(color, file); // Red
-            fputc(color, file); // Green
-            fputc(color, file); // Blue
+            // Need thrice to write RGB
+            fputc(color, file);
+            fputc(color, file);
+            fputc(color, file);
         }
     }
 
