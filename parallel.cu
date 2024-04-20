@@ -14,9 +14,10 @@ __global__ typedef struct {
 } Complex;
 
 
-int mandelbrot(Complex c, unsigned int iterations, int blockNumb, int threadsNumb){
-    mandelbrotKernel<<<blockNumb,threadsNumb>>>(c, iterations);
-    cudaDeviceSynchronize();
+int mandelbrot(Complex *c, unsigned int iterations, int threadsNumb, ){
+    size_t array_size = sizeof(c);
+    mandelbrotKernel<<<array_size/threadsNumb,threadsNumb>>>(c, iterations); //blocks = arraySize/threads and the threadcount is specified by user
+    cudaDeviceSynchronize(); //sync final result 
 }
 
 

@@ -1,6 +1,7 @@
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 #include <math.h>
 #include <stdbool.h>
@@ -13,10 +14,10 @@ typedef struct {
 } Complex;
 
 // /*
-int mandelbrot(Complex c, int iterations) {
+int mandelbrot(Complex c, int max_iter) {
     Complex z = {0, 0};
 
-    for (int i = 0; i < iterations; i++) {
+    for (int i = 0; i < max_iter; ++i) {
         double z_real_sq = z.real * z.real;
         double z_imag_sq = z.imag * z.imag;
 
@@ -29,25 +30,36 @@ int mandelbrot(Complex c, int iterations) {
         z.real = z_real_temp;
     }
 
-    return iterations; // didn't escape
+    return max_iter; // didn't escape
 }
 // */
 
-int* test = NULL;
+int* test = NULL; // only for debugging
 Complex* grandata = NULL;
-Complex* grandresult = NULL;
+char* grandresult = NULL; // only for debugging
 FILE* file = NULL;
 MPI_File fh;
+MPI_Offset offset;
 
-static inline void init(int size, int itr) {
+static inline void init(int size, int max_iter) {
     file = fopen("mandelbrot.ppm", "wb");
     fprintf(file, "P6\n%d %d\n255\n", size, size);
+
+    char string[1024];
+    snprintf(string, sizeof(string), "P6\n%d %d\n255\n", size, size);
+    const int len = strlen(string);
+    printf("string len = %d\n", len);
+    MPI_File_write(fh, string, len, MPI_CHAR, MPI_STATUS_IGNORE);
+    // offset = len;
+    // MPI_File_seek(fh, offset, MPI_SEEK_SET);
+    offset = sizeof(char);
+
     test = calloc(size * size, sizeof(int));
     grandata = calloc(size * size, sizeof(Complex));
-    grandresult = calloc(size * size, sizeof(Complex));
+    grandresult = calloc(size * size, sizeof(char));
 
-    for (int y = 0; y < size; y++) {
-        for (int x = 0; x < size; x++) {
+    for (int y = 0; y < size; ++y) {
+        for (int x = 0; x < size; ++x) {
             int i = size * y + x;
             test[i] = i;
             grandata[i] = (Complex) {
@@ -55,22 +67,19 @@ static inline void init(int size, int itr) {
                 -1.5 + (3.0 * y) / (double) size
             };
 
-            int iterations = mandelbrot(grandata[i], itr);
-            int colour = (int)(255 * (1.0 - (double)iterations / itr));
-            int* c = calloc(1, sizeof(int));
-            *c = colour;
-            printf("c = %d ", *c);
+            int iterations = mandelbrot(grandata[i], max_iter);
+            char colour = (int)(255 * (1.0 - (double)iterations / max_iter));
 
             // need thrice to write RGB
             fputc(colour, file);
             fputc(colour, file);
             fputc(colour, file);
-            MPI_File_write(fh, c, 1, MPI_INT, MPI_STATUS_IGNORE);
-            MPI_File_write(fh, c, 1, MPI_INT, MPI_STATUS_IGNORE);
-            MPI_File_write(fh, c, 1, MPI_INT, MPI_STATUS_IGNORE);
-            free(c);
+
+            // char c[3] = {colour, colour, colour};
+            // MPI_File_write(fh, c, 3, MPI_CHAR, MPI_STATUS_IGNORE);
         }
     }
+    fclose(file);
 }
 
 int main(int argc, char* argv[]) {
@@ -104,15 +113,25 @@ int main(int argc, char* argv[]) {
     //     exit(EXIT_FAILURE);
     // }
 
-    // MPI_File_open(MPI_COMM_WORLD, "mandelbrot-mpi.ppm", MPI_MODE_CREATE | MPI_MODE_RDWR, MPI_INFO_NULL, &fh);
+    if (size % numranks != 0) {
+        if (myrank == 0) printf("ERROR: Image size not divisible among set number of ranks.");
+        MPI_Finalize();
+        exit(EXIT_FAILURE);
+    }
+
+    MPI_File_open(MPI_COMM_WORLD, "mandelbrot-mpi.ppm", MPI_MODE_CREATE | MPI_MODE_RDWR, MPI_INFO_NULL, &fh);
+
+    // int rankSize = 
 
     if (myrank == 0) {
         init(size, max_iter);
 
-        fclose(file);
         printf("Mandelbrot image generated successfully.\n");
     }
 
+    free(test);
+    free(grandata);
+    free(grandresult);
     MPI_File_close(&fh);
     MPI_Finalize();
     return 0;
