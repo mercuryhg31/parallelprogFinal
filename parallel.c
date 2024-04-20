@@ -1,6 +1,9 @@
+#include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 #include <math.h>
+#include <stdbool.h>
 
 extern int mandelbrot(Complex c, int iterations);
 
@@ -30,28 +33,31 @@ int mandelbrot(Complex c, int iterations) {
 }
 */
 
+int* test = NULL;
 Complex* grandata = NULL;
 Complex* grandresult = NULL;
 
 static inline void init(int size) {
+    test = calloc(size * size, sizeof(int));
     grandata = calloc(size * size, sizeof(Complex));
     grandresult = calloc(size * size, sizeof(Complex));
 
     for (int y = 0; y < size; y++) {
         for (int x = 0; x < size; x++) {
             int i = size * y + x;
+            test[i] = i;
             grandata[i] = {
                 -2.0 + (3.0  * x) / (double) size,
                 -1.5 + (3.0 * y) / (double) size
             };
 
-            int iterations = mandelbrot(number);
-            int color = (int)(255 * (1.0 - (double)iterations / max_iter));
+            // int iterations = mandelbrot(number);
+            // int color = (int)(255 * (1.0 - (double)iterations / max_iter));
 
-            // need thrice to write RGB
-            fputc(color, file);
-            fputc(color, file);
-            fputc(color, file);
+            // // need thrice to write RGB
+            // fputc(color, file);
+            // fputc(color, file);
+            // fputc(color, file);
         }
     }
 }
@@ -85,25 +91,11 @@ int main(int argc, char* argv[]) {
     }
 
     if (myrank == 0) {
-        FILE* file = fopen("mandelbrot.ppm", "wb");
-        fprintf(file, "P6\n%d %d\n255\n", size, size);
+        // FILE* file = fopen("mandelbrot.ppm", "wb");
+        // fprintf(file, "P6\n%d %d\n255\n", size, size);
+        
 
-        for (int y = 0; y < size; y++) {
-            for (int x = 0; x < size; x++) {
-                Complex c = {
-                    -2.0 + (3.0  * x) / (double) size,
-                    -1.5 + (3.0 * y) / (double) size
-                };
-
-                int iterations = mandelbrot(c);
-                int color = (int)(255 * (1.0 - (double)iterations / max_iter));
-
-                // need thrice to write RGB
-                fputc(color, file);
-                fputc(color, file);
-                fputc(color, file);
-            }
-        }
+        init(size);
 
         fclose(file);
         printf("Mandelbrot image generated successfully.\n");

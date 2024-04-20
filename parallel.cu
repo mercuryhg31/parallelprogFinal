@@ -5,7 +5,7 @@
 extern "C" 
 {
     int mandelbrot(Complex c, int iterations);
-    }
+}
 
 
 
