@@ -40,6 +40,7 @@ char* grandresult = NULL; // only for debugging
 FILE* file = NULL;
 MPI_File fh;
 MPI_Offset offset;
+MPI_Datatype COMPLEX;
 
 static inline void init(int size, int max_iter) {
     file = fopen("mandelbrot.ppm", "wb");
@@ -99,32 +100,22 @@ int main(int argc, char* argv[]) {
     const int size = atoi(argv[1]);
     const int max_iter = atoi(argv[2]);
 
-    // if (sqrt(numranks) - (int) sqrt(numranks) != 0.0) {
-    //     if (myrank == 0) printf("ERROR: Not running on a square number of ranks.");
-    //     MPI_Finalize();
-    //     exit(EXIT_FAILURE);
-    // }
-
-    // const int root = sqrt(numranks);
-
-    // if (size % root != 0) {
-    //     if (myrank == 0) printf("ERROR: Image not divisible among set number of ranks.");
-    //     MPI_Finalize();
-    //     exit(EXIT_FAILURE);
-    // }
-
     if (size % numranks != 0) {
         if (myrank == 0) printf("ERROR: Image size not divisible among set number of ranks.");
         MPI_Finalize();
         exit(EXIT_FAILURE);
     }
 
+    MPI_Type_contiguous(2, MPI_DOUBLE, &COMPLEX);
+    MPI_Type_commit(%MPI_COMPLEX);
+
     MPI_File_open(MPI_COMM_WORLD, "mandelbrot-mpi.ppm", MPI_MODE_CREATE | MPI_MODE_RDWR, MPI_INFO_NULL, &fh);
 
-    // int rankSize = 
+    int rankNumPixels = size * size / numranks;
 
     if (myrank == 0) {
         init(size, max_iter);
+        MPI_Scatter(grandata, rankNumPixels, MPI_CHAR, )
 
         printf("Mandelbrot image generated successfully.\n");
     }
