@@ -4,9 +4,8 @@
 
 extern "C" 
 {
-    int mandelbrot(Complex c, int iterations);
+    int mandelbrot(Complex c, unsigned int iterations, int blockNumb, int threadsNumb);
 }
-
 
 
 __global__ typedef struct {
@@ -15,11 +14,10 @@ __global__ typedef struct {
 } Complex;
 
 
-int mandelbrot(Complex c, unsigned int iterations){
-    for 
+int mandelbrot(Complex c, unsigned int iterations, int blockNumb, int threadsNumb){
+    mandelbrotKernel<<<blockNumb,threadsNumb>>>(c, iterations);
+    cudaDeviceSynchronize();
 }
-
-
 
 
 __global__ int mandelbrotKernel(Complex c, unsigned int iterations) {
@@ -38,7 +36,7 @@ __global__ int mandelbrotKernel(Complex c, unsigned int iterations) {
         z.real = z_real_temp;
     }
 
-    return iterations; // didn't escape
+    return iterations; // didn't escape (Max_iterartions - 1)
 }
 
     

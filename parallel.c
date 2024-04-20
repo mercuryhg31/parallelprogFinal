@@ -5,14 +5,14 @@
 #include <math.h>
 #include <stdbool.h>
 
-extern int mandelbrot(Complex c, int iterations);
+// extern int mandelbrot(Complex c, int iterations);
 
 typedef struct {
     double real;
     double imag;
 } Complex;
 
-/*
+// /*
 int mandelbrot(Complex c, int iterations) {
     Complex z = {0, 0};
 
@@ -31,13 +31,16 @@ int mandelbrot(Complex c, int iterations) {
 
     return iterations; // didn't escape
 }
-*/
+// */
 
 int* test = NULL;
 Complex* grandata = NULL;
 Complex* grandresult = NULL;
+FILE* file = NULL;
 
-static inline void init(int size) {
+static inline void init(int size, int itr) {
+    file = fopen("mandelbrot.ppm", "wb");
+    fprintf(file, "P6\n%d %d\n255\n", size, size);
     test = calloc(size * size, sizeof(int));
     grandata = calloc(size * size, sizeof(Complex));
     grandresult = calloc(size * size, sizeof(Complex));
@@ -46,18 +49,22 @@ static inline void init(int size) {
         for (int x = 0; x < size; x++) {
             int i = size * y + x;
             test[i] = i;
-            grandata[i] = {
+            grandata[i] = (Complex) {
+                -2.0 + (3.0  * x) / (double) size,
+                -1.5 + (3.0 * y) / (double) size
+            };
+            Complex number = {
                 -2.0 + (3.0  * x) / (double) size,
                 -1.5 + (3.0 * y) / (double) size
             };
 
-            // int iterations = mandelbrot(number);
-            // int color = (int)(255 * (1.0 - (double)iterations / max_iter));
+            int iterations = mandelbrot(number, itr);
+            int color = (int)(255 * (1.0 - (double)iterations / itr));
 
-            // // need thrice to write RGB
-            // fputc(color, file);
-            // fputc(color, file);
-            // fputc(color, file);
+            // need thrice to write RGB
+            fputc(color, file);
+            fputc(color, file);
+            fputc(color, file);
         }
     }
 }
@@ -78,28 +85,26 @@ int main(int argc, char* argv[]) {
     const int size = atoi(argv[1]);
     const int max_iter = atoi(argv[2]);
 
-    if (sqrt(numranks) - (int) sqrt(numranks) != 0.0) {
-        if (myrank == 0) printf("ERROR: Not running on a square number of ranks.");
-        exit(EXIT_FAILURE);
-    }
+    // if (sqrt(numranks) - (int) sqrt(numranks) != 0.0) {
+    //     if (myrank == 0) printf("ERROR: Not running on a square number of ranks.");
+    //     exit(EXIT_FAILURE);
+    // }
 
-    const int root = sqrt(numranks);
+    // const int root = sqrt(numranks);
 
-    if (size % root != 0) {
-        if (myrank == 0) printf("ERROR: Image not divisible among set number of ranks.");
-        exit(EXIT_FAILURE);
-    }
+    // if (size % root != 0) {
+    //     if (myrank == 0) printf("ERROR: Image not divisible among set number of ranks.");
+    //     exit(EXIT_FAILURE);
+    // }
 
     if (myrank == 0) {
-        // FILE* file = fopen("mandelbrot.ppm", "wb");
-        // fprintf(file, "P6\n%d %d\n255\n", size, size);
-        
-
-        init(size);
+        init(size, max_iter);
 
         fclose(file);
         printf("Mandelbrot image generated successfully.\n");
     }
+
+    MPI_Finalize();
 
     return 0;
 }
