@@ -5,7 +5,7 @@
 #include <math.h>
 #include <stdbool.h>
 
-// extern int mandelbrot(Complex c, int iterations);
+// extern int mandelbrot(Complex c, unsigned int iterations, int blockNumb, int threadsNumb);
 
 typedef struct {
     double real;
@@ -37,6 +37,7 @@ int* test = NULL;
 Complex* grandata = NULL;
 Complex* grandresult = NULL;
 FILE* file = NULL;
+MPI_File fh;
 
 static inline void init(int size, int itr) {
     file = fopen("mandelbrot.ppm", "wb");
@@ -53,18 +54,21 @@ static inline void init(int size, int itr) {
                 -2.0 + (3.0  * x) / (double) size,
                 -1.5 + (3.0 * y) / (double) size
             };
-            Complex number = {
-                -2.0 + (3.0  * x) / (double) size,
-                -1.5 + (3.0 * y) / (double) size
-            };
 
-            int iterations = mandelbrot(number, itr);
-            int color = (int)(255 * (1.0 - (double)iterations / itr));
+            int iterations = mandelbrot(grandata[i], itr);
+            int colour = (int)(255 * (1.0 - (double)iterations / itr));
+            int* c = calloc(1, sizeof(int));
+            *c = colour;
+            printf("c = %d ", *c);
 
             // need thrice to write RGB
-            fputc(color, file);
-            fputc(color, file);
-            fputc(color, file);
+            fputc(colour, file);
+            fputc(colour, file);
+            fputc(colour, file);
+            MPI_File_write(fh, c, 1, MPI_INT, MPI_STATUS_IGNORE);
+            MPI_File_write(fh, c, 1, MPI_INT, MPI_STATUS_IGNORE);
+            MPI_File_write(fh, c, 1, MPI_INT, MPI_STATUS_IGNORE);
+            free(c);
         }
     }
 }
@@ -79,6 +83,7 @@ int main(int argc, char* argv[]) {
 
     if (argc < 3) {
         if (myrank == 0) printf("ERROR: Doesn't have 2 arguments: 1) size of image 2) number of max iterations");
+        MPI_Finalize();
         exit(EXIT_FAILURE);
     }
 
@@ -87,6 +92,7 @@ int main(int argc, char* argv[]) {
 
     // if (sqrt(numranks) - (int) sqrt(numranks) != 0.0) {
     //     if (myrank == 0) printf("ERROR: Not running on a square number of ranks.");
+    //     MPI_Finalize();
     //     exit(EXIT_FAILURE);
     // }
 
@@ -94,8 +100,11 @@ int main(int argc, char* argv[]) {
 
     // if (size % root != 0) {
     //     if (myrank == 0) printf("ERROR: Image not divisible among set number of ranks.");
+    //     MPI_Finalize();
     //     exit(EXIT_FAILURE);
     // }
+
+    // MPI_File_open(MPI_COMM_WORLD, "mandelbrot-mpi.ppm", MPI_MODE_CREATE | MPI_MODE_RDWR, MPI_INFO_NULL, &fh);
 
     if (myrank == 0) {
         init(size, max_iter);
@@ -104,7 +113,7 @@ int main(int argc, char* argv[]) {
         printf("Mandelbrot image generated successfully.\n");
     }
 
+    MPI_File_close(&fh);
     MPI_Finalize();
-
     return 0;
 }
