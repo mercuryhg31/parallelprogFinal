@@ -38,7 +38,18 @@ int main(int argc, char* argv[]) {
     const int myrank = _myrank;
 
 	// https://stackoverflow.com/questions/33618937/trouble-understanding-mpi-type-create-struct
-    MPI_Type_create_struct(2, {MPI_DOUBLE, MPI_DOUBLE}, )
+	int count = 2; //number of elements in struct
+	int blocklengths[count];
+	blocklengths[0] = 1;
+	blocklengths[1] = 1;
+
+	MPI_Aint disp[count];
+	disp[0] = offsetof(Complex, real);
+	disp[1] = offsetof(Complex, imag);
+	MPI_Datatype types[count];
+	types[0] = MPI_DOUBLE;
+	types[1] = MPI_DOUBLE;
+    MPI_Type_create_struct(count, blocklengths, disp, types, &COMPLEX);
 
     int rankNumPixels = 10 / numranks;
 	Complex* localdata = calloc(rankNumPixels, sizeof(Complex));

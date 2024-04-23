@@ -39,7 +39,7 @@ Complex* grandata = NULL;
 char* grandresult = NULL; // only for debugging
 FILE* file = NULL;
 MPI_File fh;
-MPI_Offset offset;
+MPI_Offset dataStart;
 MPI_Datatype COMPLEX;
 
 static inline void init(int size, int max_iter) {
@@ -51,14 +51,14 @@ static inline void init(int size, int max_iter) {
     const int len = strlen(string);
     printf("string len = %d\n", len);
     MPI_File_write(fh, string, len, MPI_CHAR, MPI_STATUS_IGNORE);
-    // offset = len;
-    // MPI_File_seek(fh, offset, MPI_SEEK_SET);
-    offset = sizeof(char);
+    dataStart = len;
+    MPI_File_seek(fh, dataStart, MPI_SEEK_SET);
 
     test = calloc(size * size, sizeof(int));
     grandata = calloc(size * size, sizeof(Complex));
     grandresult = calloc(size * size, sizeof(char));
 
+    MPI_Offset offset = dataStart;
     for (int y = 0; y < size; ++y) {
         for (int x = 0; x < size; ++x) {
             int i = size * y + x;
@@ -76,11 +76,24 @@ static inline void init(int size, int max_iter) {
             fputc(colour, file);
             fputc(colour, file);
 
-            // char c[3] = {colour, colour, colour};
+            char c[3] = {colour, colour, colour};
             // MPI_File_write(fh, c, 3, MPI_CHAR, MPI_STATUS_IGNORE);
+
+            MPI_File_seek()
+            MPI_File_write_at()
         }
     }
     fclose(file);
+}
+
+static inline void rankWork(Complex* recvbuf, int size, int rankSize, int max_iter) {
+    for (int i = 0; i < rankSize; ++i) {
+        int iterations = mandelbrot(recvbuf[i], max_iter);
+        char colour = (int)(255 * (1.0 - (double)iterations / max_iter));
+
+        char c[3] = {colour, colour, colour};
+        MPI_File_write(fh, c, 3, MPI_CHAR, MPI_STATUS_IGNORE);
+    }
 }
 
 int main(int argc, char* argv[]) {
@@ -107,19 +120,28 @@ int main(int argc, char* argv[]) {
     }
 
     MPI_Type_contiguous(2, MPI_DOUBLE, &COMPLEX);
-    MPI_Type_commit(%MPI_COMPLEX);
+    MPI_Type_commit(&COMPLEX);
+    // int count = 2; //number of elements in struct
+    // MPI_Aint offsets[count] = {0, 8};
+    // int blocklengths[count] = {1, 1};
+    // MPI_Datatype types[count] = {MPI_FLOAT, MPI_CHAR};
+    // MPI_Datatype my_mpi_type;
+
+    // MPI_Type_create_struct(count, blocklengths, offsets, types, &my_mpi_type);
 
     MPI_File_open(MPI_COMM_WORLD, "mandelbrot-mpi.ppm", MPI_MODE_CREATE | MPI_MODE_RDWR, MPI_INFO_NULL, &fh);
 
-    int rankNumPixels = size * size / numranks;
+    const int rankNumPixels = size * size / numranks;
+    Complex* localdata = calloc(rankNumPixels, sizeof(Complex));
 
     if (myrank == 0) {
         init(size, max_iter);
-        MPI_Scatter(grandata, rankNumPixels, MPI_CHAR, )
 
-        printf("Mandelbrot image generated successfully.\n");
     }
+    // MPI_Scatter(grandata, rankNumPixels, COMPLEX, localdata, rankNumPixels, COMPLEX, 0, MPI_COMM_WORLD);
+    // rankWork(localdata, size, rankNumPixels, max_iter);
 
+    printf("Rank %d: Mandelbrot image generated successfully.\n", myrank);
     free(test);
     free(grandata);
     free(grandresult);
