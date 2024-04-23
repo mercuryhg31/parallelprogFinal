@@ -205,7 +205,7 @@ int main(int argc, char* argv[]) {
     // free(test);
     // free(grandata);
     // free(grandresult);
-    // MPI_File_close(&fh);
+    MPI_File_close(&fh);
     MPI_Barrier(MPI_COMM_WORLD);
 
     MPI_Finalize();
