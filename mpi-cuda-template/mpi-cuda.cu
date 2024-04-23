@@ -2,6 +2,7 @@
 #include<cuda.h>
 #include<cuda_runtime.h>
 
+
 extern "C" 
 {
 void runCudaLand( int myrank );

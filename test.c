@@ -8,4 +8,5 @@ int main() {
 		printf("NOT A SQUARE\n");
 	}
 	else printf("good\n");
+	int *test = calloc((size * size), sizeof(int));
 }
