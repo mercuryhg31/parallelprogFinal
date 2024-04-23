@@ -13,7 +13,7 @@ typedef struct {
     double imag;
 } Complex;
  
-extern void mandelbrot(Complex *c, unsigned int iterations, int threadsNumb, int sizeSubworld, int **res);
+extern void mandelbrot(Complex *c, unsigned int iterations, int threadsNumb, int sizeSubworld, int **res, int myrank, int worldSize);
 
 
 /*
@@ -87,21 +87,23 @@ MPI_Offset offset;
 //     fclose(file);
 // }
 
-static inline void generateImage(Complex *subimage, unsigned int iterations, unsigned int threads, int sizeSubworld){
+static inline void generateImage(Complex *subimage, unsigned int iterations, unsigned int threads, int sizeSubworld, int myrank, int worldSize){
     //launch CUDA code
     printf("Launching cuda...\n\n\n\n\n");
     int **iterArray;
-    iterArray = (int**)malloc(sizeof(int*));
+    iterArray  = (int **)malloc( sizeof(int *));
+    mandelbrot(subimage, iterations, threads, sizeSubworld, iterArray, myrank, worldSize);
+    int *finalIterations = calloc(worldSize, sizeof(int));
 
-    mandelbrot(subimage, iterations, threads, sizeSubworld, iterArray);
 
-    // take array of iterations and calculate color and write to the file fh
-    for (int i = 0; i < sizeSubworld; i++){
-        printf("%d\n", iterArray[0][i]);
-        char colour = (int)(255 * (1.0 - (double)iterArray[0][i] / iterations));
-        char c[3] = {colour, colour, colour};
-        MPI_File_write(fh, c, 3, MPI_CHAR, MPI_STATUS_IGNORE);
-
+    //MPI_Gather(dataRec, dataNoGhost, MPI_UNSIGNED_CHAR,g_data,  g_dataLength, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
+    // //take array of iterations and calculate color and write to the file fh
+    // Take array of iterations and calculate color and write to the file fh
+for (int i = 0; i < sizeSubworld; i++) {
+    unsigned char colour = (unsigned char)(255 * (1.0 - (double)iterArray[0][i] / iterations));
+    printf("Color: %u\n", colour); // Print color value for debugging
+    unsigned char c[3] = {colour, colour, colour};
+    MPI_File_write(fh, c, 3, MPI_UNSIGNED_CHAR, MPI_STATUS_IGNORE);
     }
 
     
@@ -148,7 +150,7 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    MPI_File_open(MPI_COMM_WORLD, "mandelbrot-mpi.ppm", MPI_MODE_CREATE | MPI_MODE_RDWR, MPI_INFO_NULL, &fh);
+    MPI_File_open(MPI_COMM_WORLD, "mandelbrot1-mpi.ppm", MPI_MODE_CREATE | MPI_MODE_RDWR, MPI_INFO_NULL, &fh);
 
     // // int rankSize = 
     // Complex c;
@@ -167,12 +169,22 @@ int main(int argc, char* argv[]) {
     //create buffer to receive the 1d array
     Complex *recvRowspace = calloc((size*size)/numranks, sizeof(Complex));
     int sizeSubworld;
+    sizeSubworld = (size*size)/numranks;
+    char string[1024];
+    snprintf(string, sizeof(string), "P6\n%d %d\n255\n", size, size);
+    const int len = strlen(string);
+    printf("string len = %d\n", len);
+    offset = sizeof(char);
 
+    MPI_File_write(fh, string, len, MPI_CHAR, MPI_STATUS_IGNORE);
 
     if (myrank == 0) {
-        Complex *rowspace = calloc((size*size), sizeof(Complex));
+        Complex *rowspace = calloc((size*size), sizeof(Complex));   
         printf("Scattering...\n");
-        sizeSubworld = (size*size)/numranks;
+        
+        // offset = len;
+        // MPI_File_seek(fh, offset, MPI_SEEK_SET);
+        
         MPI_Scatter( rowspace, (size*size)/numranks*sizeof(Complex) , MPI_BYTE, recvRowspace, (size*size)/numranks*sizeof(Complex) , MPI_BYTE, 0, MPI_COMM_WORLD);
         
         //printf("Mandelbrot image generated successfully.\n");
@@ -180,9 +192,10 @@ int main(int argc, char* argv[]) {
     else{
         printf("Receiving...\n");
         MPI_Scatter(NULL, 0, MPI_BYTE, recvRowspace, (size*size)/numranks * sizeof(Complex), MPI_BYTE, 0, MPI_COMM_WORLD);
-    }
 
-    generateImage(recvRowspace, max_iter, 32,  sizeSubworld);
+    }
+    printf("size of subworld: %d rank: %d\n", sizeSubworld, myrank);
+    generateImage(recvRowspace, max_iter, 1024,  sizeSubworld, myrank, size);
 
 
     // // init(size, max_iter);
