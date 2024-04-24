@@ -44,7 +44,7 @@ FILE* file = NULL;
 
 MPI_File fh;
 
-MPI_Offset offset;
+MPI_Offset dataStart;
 
 // static inline void init(int size, int max_iter) {
 //     file = fopen("mandelbrot.ppm", "wb");
@@ -174,7 +174,7 @@ int main(int argc, char* argv[]) {
     snprintf(string, sizeof(string), "P6\n%d %d\n255\n", size, size);
     const int len = strlen(string);
     printf("string len = %d\n", len);
-    offset = sizeof(char);
+    dataStart = sizeof(char);
 
     MPI_File_write(fh, string, len, MPI_CHAR, MPI_STATUS_IGNORE);
 
