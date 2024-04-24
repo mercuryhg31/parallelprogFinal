@@ -6,6 +6,7 @@
 #include <math.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
 
 typedef struct {
@@ -15,6 +16,24 @@ typedef struct {
  
 extern void mandelbrot(Complex *c, unsigned int iterations, int threadsNumb, int sizeSubworld, int **res, int myrank, int worldSize);
 
+
+/**************************************************************/
+/* clock_now(): returns a 64 bit counter of cycles for POWER9 */
+/*              clock rate is 512MHz                          */
+/**************************************************************/
+
+uint64_t clock_now(void)
+{
+  unsigned int tbl, tbu0, tbu1;
+  
+  do {
+    __asm__ __volatile__ ("mftbu %0" : "=r"(tbu0));
+    __asm__ __volatile__ ("mftb %0" : "=r"(tbl));
+    __asm__ __volatile__ ("mftbu %0" : "=r"(tbu1));
+  } while (tbu0 != tbu1);
+  return (((uint64_t)tbu0) << 32) | tbl;
+}
+/**************************************************************/
 
 /*
 int mandelbrot(Complex c, int max_iter) {
@@ -44,7 +63,7 @@ FILE* file = NULL;
 
 MPI_File fh;
 
-MPI_Offset dataStart;
+MPI_Offset offset;
 
 // static inline void init(int size, int max_iter) {
 //     file = fopen("mandelbrot.ppm", "wb");
@@ -175,11 +194,15 @@ int main(int argc, char* argv[]) {
     snprintf(string, sizeof(string), "P6\n%d %d\n255\n", size, size);
     const int len = strlen(string);
     printf("string len = %d\n", len);
-    dataStart = sizeof(char);
+    offset = len;
 
     MPI_File_write(fh, string, len, MPI_CHAR, MPI_STATUS_IGNORE);
 
+    double mstart, mend;
+    uint64_t start, end;
     if (myrank == 0) {
+        mstart = MPI_Wtime();
+        start = clock_now();
         Complex *rowspace = calloc((size*size), sizeof(Complex));   
         printf("Scattering...\n");
         
@@ -197,7 +220,12 @@ int main(int argc, char* argv[]) {
     }
     printf("size of subworld: %d rank: %d\n", sizeSubworld, myrank);
     generateImage(recvRowspace, max_iter, 1024,  sizeSubworld, myrank, size);
-
+    if (myrank == 0) {
+        mend = MPI_Wtime();
+        end = clock_now();
+        printf("CLOCKNOW: %d\n", end - start);
+        printf("MPIWTIME: %d\n", mend - mstart);
+    }
 
     // // init(size, max_iter);
 
@@ -206,7 +234,7 @@ int main(int argc, char* argv[]) {
     // free(test);
     // free(grandata);
     // free(grandresult);
-    // MPI_File_close(&fh);
+    MPI_File_close(&fh);
     MPI_Barrier(MPI_COMM_WORLD);
 
     MPI_Finalize();
