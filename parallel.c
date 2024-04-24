@@ -93,17 +93,18 @@ static inline void generateImage(Complex *subimage, unsigned int iterations, uns
     int **iterArray;
     iterArray  = (int **)malloc( sizeof(int *));
     mandelbrot(subimage, iterations, threads, sizeSubworld, iterArray, myrank, worldSize);
+    MPI_Barrier(MPI_COMM_WORLD);
     int *finalIterations = calloc(worldSize, sizeof(int));
 
 
     //MPI_Gather(dataRec, dataNoGhost, MPI_UNSIGNED_CHAR,g_data,  g_dataLength, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
     // //take array of iterations and calculate color and write to the file fh
     // Take array of iterations and calculate color and write to the file fh
-for (int i = 0; i < sizeSubworld; i++) {
-    unsigned char colour = (unsigned char)(255 * (1.0 - (double)iterArray[0][i] / iterations));
-    printf("Color: %u\n", colour); // Print color value for debugging
-    unsigned char c[3] = {colour, colour, colour};
-    MPI_File_write(fh, c, 3, MPI_UNSIGNED_CHAR, MPI_STATUS_IGNORE);
+    for (int i = 0; i < sizeSubworld; i++) {
+        unsigned char colour = (unsigned char)(255 * (1.0 - (double)iterArray[0][i] / iterations));
+        printf("Color: %u\n", colour); // Print color value for debugging
+        unsigned char c[3] = {colour, colour, colour};
+        MPI_File_write(fh, c, 3, MPI_UNSIGNED_CHAR, MPI_STATUS_IGNORE);
     }
 
     
@@ -185,7 +186,7 @@ int main(int argc, char* argv[]) {
         // offset = len;
         // MPI_File_seek(fh, offset, MPI_SEEK_SET);
         
-        MPI_Scatter( rowspace, (size*size)/numranks*sizeof(Complex) , MPI_BYTE, recvRowspace, (size*size)/numranks*sizeof(Complex) , MPI_BYTE, 0, MPI_COMM_WORLD);
+        MPI_Scatter( rowspace, (size*size)/numranks*sizeof(Complex), MPI_BYTE, recvRowspace, (size*size)/numranks*sizeof(Complex) , MPI_BYTE, 0, MPI_COMM_WORLD);
         
         //printf("Mandelbrot image generated successfully.\n");
     }
@@ -205,7 +206,7 @@ int main(int argc, char* argv[]) {
     // free(test);
     // free(grandata);
     // free(grandresult);
-    MPI_File_close(&fh);
+    // MPI_File_close(&fh);
     MPI_Barrier(MPI_COMM_WORLD);
 
     MPI_Finalize();
